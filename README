@@ -1,0 +1,12 @@
+This project contains small demo OpenCL programs.
+
+The intention is to provide simple C programs that
+can drive KLEE-CL (compile with whole-llvm).
+
+After cloning this repository run the following
+
+$ git submodule init
+$ git submodule update
+
+so that the necessary submodules are cloned and
+set to the right commit.
