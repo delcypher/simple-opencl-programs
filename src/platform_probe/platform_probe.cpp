@@ -243,9 +243,9 @@ void printDeviceInfo(cl_device_id did)
         DEVINFO(CL_DEVICE_VENDOR_ID, t<cl_uint>),
         DEVINFO(CL_DRIVER_VERSION, cstring),
         DEVINFO(CL_DEVICE_VERSION, cstring),
+        DEVINFO(CL_DEVICE_OPENCL_C_VERSION, cstring),
         DEVINFO(CL_DEVICE_TYPE, DeviceType),
         DEVINFO(CL_DEVICE_AVAILABLE, cl_bool),
-        DEVINFO(CL_DEVICE_EXTENSIONS, cstring),
         DEVINFO(CL_DEVICE_COMPILER_AVAILABLE, cl_bool),
         DEVINFO(CL_DEVICE_SINGLE_FP_CONFIG, FPflag),
         DEVINFO(CL_DEVICE_DOUBLE_FP_CONFIG, FPflag),
@@ -256,7 +256,19 @@ void printDeviceInfo(cl_device_id did)
         DEVINFO(CL_DEVICE_MAX_CLOCK_FREQUENCY, t<cl_uint>),  /* In MHz */
         DEVINFO(CL_DEVICE_ADDRESS_BITS, t<cl_uint>),
         DEVINFO(CL_DEVICE_MAX_MEM_ALLOC_SIZE, t<cl_ulong>), /* In bytes */
-        DEVINFO(CL_DEVICE_IMAGE_SUPPORT, cl_bool)
+        DEVINFO(CL_DEVICE_IMAGE_SUPPORT, cl_bool),
+        DEVINFO(CL_DEVICE_ENDIAN_LITTLE, cl_bool),
+        #ifdef CL_VERSION_1_2
+        DEVINFO(CL_DEVICE_LINKER_AVAILABLE, cl_bool),
+        DEVINFO(CL_DEVICE_BUILT_IN_KERNELS),
+        #endif
+        DEVINFO(CL_DEVICE_HOST_UNIFIED_MEMORY, cl_bool),
+        DEVINFO(CL_DEVICE_ERROR_CORRECTION_SUPPORT, cl_bool),
+        DEVINFO(CL_DEVICE_MAX_PARAMETER_SIZE, t<size_t>), /* In bytes */
+        DEVINFO(CL_DEVICE_MEM_BASE_ADDR_ALIGN, t<cl_uint>), /* OpenCL 1.2 Spec is confusing here */
+        DEVINFO(CL_DEVICE_GLOBAL_MEM_SIZE, t<cl_ulong>), /* In bytes */
+        DEVINFO(CL_DEVICE_LOCAL_MEM_SIZE, t<cl_ulong>), /* In bytes */
+        DEVINFO(CL_DEVICE_EXTENSIONS, cstring)
     };
     #undef DEVINFO
     /* Iterate through properties of interest */
