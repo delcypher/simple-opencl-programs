@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <CL/opencl.h>
 
+#define _INDENT "  "
+
 int _handleError(cl_int error, const char* msg)
 {
     if ( error != CL_SUCCESS )
@@ -150,7 +152,7 @@ void printDeviceInfo(cl_device_id did)
     unsigned int index=0;
     for(; index < sizeof(dInfos)/sizeof(DevicePropTriple); ++index)
     {
-        printf("    " /* Indent */ 
+        printf(_INDENT _INDENT _INDENT /* Indent */
                "%s" /* Parameter name */
                ": " /* seperator */
                , dInfos[index].name);
@@ -217,6 +219,7 @@ int main(int argc, char** argv)
     unsigned int index=0;
     for( ; index < numOfPlatforms; ++index)
     {
+        printf("Platform # %u", index);
         // Iterate through platform properties
         unsigned int pI=0;
         for(; pI < sizeof(pInfos)/sizeof(PlatformInfoPair); ++pI)
@@ -251,7 +254,7 @@ int main(int argc, char** argv)
                                   0
                                 );
          handleError(err,"Got string size but couldn't get string querying platform info.");
-         printf("%s: %s\n", pInfos[pI].name, info);
+         printf(_INDENT "%s: %s\n", pInfos[pI].name, info);
          free(info);
 
 
@@ -294,9 +297,11 @@ int main(int argc, char** argv)
         unsigned int deviceIndex=0;
         for (; deviceIndex < numDevices; ++deviceIndex)
         {
-            printf("  Device :%u\n", deviceIndex);
+            printf(_INDENT _INDENT "Device :%u\n", deviceIndex);
             printDeviceInfo( devices[deviceIndex]);
         }
+
+        printf("\n");
 
     }
 
