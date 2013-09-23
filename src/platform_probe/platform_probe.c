@@ -3,17 +3,22 @@
 #include <assert.h>
 #include <CL/opencl.h>
 
-void handleError(cl_int error, const char* msg)
+int _handleError(cl_int error, const char* msg)
 {
     if ( error != CL_SUCCESS )
     {
         printf("%s\n",msg);
-        exit(1);
+        return 1;
     }
+    else
+        return 0;
 }
 
+// Helper macro
+#define handleError(EC,MSG) if (_handleError(EC,MSG) != 0) return 1
 
-void printDI_cstring(cl_device_id did, cl_device_info info)
+
+int printDI_cstring(cl_device_id did, cl_device_info info)
 {
     size_t stringSize=0;
     cl_int err=0;
@@ -29,7 +34,7 @@ void printDI_cstring(cl_device_id did, cl_device_info info)
     if (stringSize < 1)
     {
         printf("Error: String size cannot be < 1\n");
-        return;
+        return 1;
     }
 
     char* str = (char*) malloc(sizeof(char)*stringSize);
@@ -37,7 +42,7 @@ void printDI_cstring(cl_device_id did, cl_device_info info)
     if (str == 0)
     {
         printf("Failed to malloc.\n");
-        return;
+        return 1;
     }
 
     err = clGetDeviceInfo(did,
@@ -51,9 +56,10 @@ void printDI_cstring(cl_device_id did, cl_device_info info)
 
     printf("%s\n",str);
     free(str);
+    return 0;
 }
 
-void printDI_DeviceType(cl_device_id did, cl_device_info info)
+int printDI_DeviceType(cl_device_id did, cl_device_info info)
 {
     assert( info == CL_DEVICE_TYPE);
     cl_device_type devType=0;
@@ -78,12 +84,13 @@ void printDI_DeviceType(cl_device_id did, cl_device_info info)
     #undef CHK_FLAG
 
     printf("\n");
+    return 0;
 }
 
-void printDI_FPflag(cl_device_id did, cl_device_info info)
+int printDI_FPflag(cl_device_id did, cl_device_info info)
 {
-    assert( info == CL_DEVICE_SINGLE_FP_CONFIG || 
-            info == CL_DEVICE_DOUBLE_FP_CONFIG &&
+    assert( ( info == CL_DEVICE_SINGLE_FP_CONFIG ||
+            info == CL_DEVICE_DOUBLE_FP_CONFIG ) &&
             "Invalid cl_device_info passed.");
     cl_uint err;
     cl_device_fp_config fpConfig;
@@ -114,6 +121,7 @@ void printDI_FPflag(cl_device_id did, cl_device_info info)
     #endif
     #undef CHK_FLAG
     printf("\n");
+    return 0;
 }
 
 void printDeviceInfo(cl_device_id did)
@@ -122,7 +130,7 @@ void printDeviceInfo(cl_device_id did)
     {
         cl_device_info param;
         const char* name;
-        void (*handler) (cl_device_id, cl_device_info);
+        int (*handler) (cl_device_id, cl_device_info);
     } DevicePropTriple;
     #define DEVINFO(A,TYPE) { A, #A, & printDI_ ##TYPE }
 
@@ -265,7 +273,7 @@ int main(int argc, char** argv)
         continue;
         }
 
-        printf("# of devices:% u\n", numDevices);
+        printf("# of devices: %u\n", numDevices);
 
         cl_device_id* devices = (cl_device_id*) malloc(sizeof(cl_device_id) * numDevices);
         if ( devices == 0 )
