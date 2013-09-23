@@ -126,6 +126,106 @@ int printDI_FPflag(cl_device_id did, cl_device_info info)
     return 0;
 }
 
+void printT(cl_uint t) { printf("%u",t);}
+void printT(cl_int t) { printf("%d",t); }
+void printT(size_t t) { printf("%lu", (unsigned long) t); }
+
+template <typename T>
+int printDI_t(cl_device_id did, cl_device_info info)
+{
+    cl_int err;
+    T param;
+    err = clGetDeviceInfo( did,
+                           info,
+                           sizeof(T),
+                           &param,
+                           0
+                         );
+    handleError(err, "Could not get information for generic type");
+
+    printT(param);
+    printf("\n");
+    return 0;
+}
+
+/* Cannot use template specialisation here.
+*  As cl_bool's underlying type is cl_uint
+*  which needs treating with the generic template.
+*  So instead just have another special method
+*  just for cl_bool types.
+*/
+int printDI_cl_bool(cl_device_id did, cl_device_info info)
+{
+    cl_int err;
+    cl_bool result;
+    err = clGetDeviceInfo( did,
+                           info,
+                           sizeof(cl_bool),
+                           &result,
+                           0
+                         );
+
+    handleError(err, "Could not get cl_bool info");
+
+    if (result == CL_TRUE)
+        printf("CL_TRUE\n");
+    else if (result == CL_FALSE)
+        printf("CL_FALSE\n");
+    else
+        printf("FIXME: Unknown!\n");
+
+    return 0;
+}
+
+int printDI_workItemSizes(cl_device_id did, cl_device_info info)
+{
+    assert( info == CL_DEVICE_MAX_WORK_ITEM_SIZES &&
+           "Wrong handler");
+
+    // Get number of dimensions (expect 3)
+    cl_uint numDim=0;
+    cl_int err;
+    err = clGetDeviceInfo(did,
+                          CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
+                          sizeof(numDim),
+                          &numDim,
+                          0
+                         );
+    handleError(err, "Failed to get CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS\n");
+
+    if (numDim < 1 )
+    {
+        printf("Failed to get number of dimensions\n");
+        return 1;
+    }
+
+    size_t* dimMax = (size_t*) malloc( sizeof(size_t)*numDim );
+    if (dimMax == 0 )
+    {
+        printf("Malloc failed.\n");
+        return 1;
+    }
+
+    err = clGetDeviceInfo(did,
+                          info,
+                          sizeof(size_t) * numDim,
+                          dimMax,
+                          0
+                         );
+
+    handleError(err, "Failed to get CL_DEVICE_MAX_WORK_ITEM_SIZES");
+    cl_uint d=0;
+    printf("[ ");
+    for( ; d < numDim ; ++d)
+    {
+        printf("%lu ", (unsigned long) dimMax[d]);
+    }
+    printf("]\n");
+    
+    free(dimMax);
+    return 0;
+}
+
 void printDeviceInfo(cl_device_id did)
 {
     typedef struct
@@ -138,14 +238,25 @@ void printDeviceInfo(cl_device_id did)
 
     DevicePropTriple dInfos[] = 
     {
-        DEVINFO(CL_DEVICE_NAME,cstring),
-        DEVINFO(CL_DEVICE_VENDOR,cstring),
-        DEVINFO(CL_DRIVER_VERSION,cstring),
-        DEVINFO(CL_DEVICE_VERSION,cstring),
-        DEVINFO(CL_DEVICE_TYPE,DeviceType),
-        DEVINFO(CL_DEVICE_EXTENSIONS,cstring),
-        DEVINFO(CL_DEVICE_SINGLE_FP_CONFIG,FPflag),
-        DEVINFO(CL_DEVICE_DOUBLE_FP_CONFIG,FPflag)
+        DEVINFO(CL_DEVICE_NAME, cstring),
+        DEVINFO(CL_DEVICE_VENDOR, cstring),
+        DEVINFO(CL_DEVICE_VENDOR_ID, t<cl_uint>),
+        DEVINFO(CL_DRIVER_VERSION, cstring),
+        DEVINFO(CL_DEVICE_VERSION, cstring),
+        DEVINFO(CL_DEVICE_TYPE, DeviceType),
+        DEVINFO(CL_DEVICE_AVAILABLE, cl_bool),
+        DEVINFO(CL_DEVICE_EXTENSIONS, cstring),
+        DEVINFO(CL_DEVICE_COMPILER_AVAILABLE, cl_bool),
+        DEVINFO(CL_DEVICE_SINGLE_FP_CONFIG, FPflag),
+        DEVINFO(CL_DEVICE_DOUBLE_FP_CONFIG, FPflag),
+        DEVINFO(CL_DEVICE_MAX_COMPUTE_UNITS, t<cl_uint>),
+        DEVINFO(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, t<cl_uint>),
+        DEVINFO(CL_DEVICE_MAX_WORK_GROUP_SIZE, t<size_t>),
+        DEVINFO(CL_DEVICE_MAX_WORK_ITEM_SIZES, workItemSizes),
+        DEVINFO(CL_DEVICE_MAX_CLOCK_FREQUENCY, t<cl_uint>),  /* In MHz */
+        DEVINFO(CL_DEVICE_ADDRESS_BITS, t<cl_uint>),
+        DEVINFO(CL_DEVICE_MAX_MEM_ALLOC_SIZE, t<cl_ulong>), /* In bytes */
+        DEVINFO(CL_DEVICE_IMAGE_SUPPORT, cl_bool)
     };
     #undef DEVINFO
     /* Iterate through properties of interest */
