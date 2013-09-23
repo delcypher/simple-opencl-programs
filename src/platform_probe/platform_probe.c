@@ -154,7 +154,7 @@ void printDeviceInfo(cl_device_id did)
     }
 }
 
-int main()
+int main(int argc, char** argv)
 {
     cl_int err = 0;
 
