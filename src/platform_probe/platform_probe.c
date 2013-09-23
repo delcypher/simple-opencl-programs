@@ -34,7 +34,7 @@ int printDI_cstring(cl_device_id did, cl_device_info info)
     if (stringSize < 1)
     {
         printf("Error: String size cannot be < 1\n");
-        return;
+        return 1;
     }
 
     char* str = (char*) malloc(sizeof(char)*stringSize);
@@ -42,7 +42,7 @@ int printDI_cstring(cl_device_id did, cl_device_info info)
     if (str == 0)
     {
         printf("Failed to malloc.\n");
-        return;
+        return 1;
     }
 
     err = clGetDeviceInfo(did,
@@ -56,6 +56,7 @@ int printDI_cstring(cl_device_id did, cl_device_info info)
 
     printf("%s\n",str);
     free(str);
+    return 0;
 }
 
 int printDI_DeviceType(cl_device_id did, cl_device_info info)
@@ -83,12 +84,13 @@ int printDI_DeviceType(cl_device_id did, cl_device_info info)
     #undef CHK_FLAG
 
     printf("\n");
+    return 0;
 }
 
 int printDI_FPflag(cl_device_id did, cl_device_info info)
 {
-    assert( info == CL_DEVICE_SINGLE_FP_CONFIG || 
-            info == CL_DEVICE_DOUBLE_FP_CONFIG &&
+    assert( ( info == CL_DEVICE_SINGLE_FP_CONFIG ||
+            info == CL_DEVICE_DOUBLE_FP_CONFIG ) &&
             "Invalid cl_device_info passed.");
     cl_uint err;
     cl_device_fp_config fpConfig;
@@ -271,7 +273,7 @@ int main()
         continue;
         }
 
-        printf("# of devices:% u\n", numDevices);
+        printf("# of devices: %u\n", numDevices);
 
         cl_device_id* devices = (cl_device_id*) malloc(sizeof(cl_device_id) * numDevices);
         if ( devices == 0 )
