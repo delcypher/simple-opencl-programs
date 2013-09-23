@@ -65,7 +65,7 @@ int printDI_DeviceType(cl_device_id did, cl_device_info info)
 {
     assert( info == CL_DEVICE_TYPE);
     cl_device_type devType=0;
-    cl_uint err;
+    cl_int err;
     err = clGetDeviceInfo(did,
                           info,
                           sizeof(devType),
@@ -94,7 +94,7 @@ int printDI_FPflag(cl_device_id did, cl_device_info info)
     assert( ( info == CL_DEVICE_SINGLE_FP_CONFIG ||
             info == CL_DEVICE_DOUBLE_FP_CONFIG ) &&
             "Invalid cl_device_info passed.");
-    cl_uint err;
+    cl_int err;
     cl_device_fp_config fpConfig;
     err = clGetDeviceInfo( did,
                            info,
