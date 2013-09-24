@@ -107,13 +107,13 @@ cl_int printPlatformInfo(cl_platform_id platform, cl_uint indent)
                               0
                             );
         if ( err != CL_SUCCESS)
-        { 
+        {
             printf("Got string size but couldn't get string querying platform info.\n");
             free(info);
             lastError = CL_INVALID_PLATFORM;
             continue;
         }
-        
+       
         for (cl_uint i=0; i < indent; ++i) printf(" ");
         printf("%s: %s\n", pInfos[pI].name, info);
         free(info);
@@ -181,7 +181,7 @@ static cl_int printDI_cstring(cl_device_id did, cl_device_info info)
                           &stringSize
                          );
 
-    if ( err != CL_SUCCESS ) 
+    if ( err != CL_SUCCESS )
     {
         printf("Couldn't determine string size");
         return err;
@@ -231,7 +231,7 @@ static cl_int printDI_DeviceType(cl_device_id did, cl_device_info info)
                           0);
 
     if ( err != CL_SUCCESS)
-    { 
+    {
         printf("Couldn't get device info.");
         return err;
     }
@@ -400,7 +400,7 @@ static cl_int printDI_workItemSizes(cl_device_id did, cl_device_info info)
         printf("%lu ", (unsigned long) dimMax[d]);
     }
     printf("]");
-    
+   
     free(dimMax);
     return CL_SUCCESS;
 }
@@ -415,7 +415,7 @@ cl_int printDeviceInfo(cl_device_id did, cl_uint indent)
     } DevicePropTriple;
     #define DEVINFO(A,TYPE) { A, #A, & printDI_ ##TYPE }
 
-    DevicePropTriple dInfos[] = 
+    DevicePropTriple dInfos[] =
     {
         DEVINFO(CL_DEVICE_NAME, cstring),
         DEVINFO(CL_DEVICE_VENDOR, cstring),
@@ -465,6 +465,67 @@ cl_int printDeviceInfo(cl_device_id did, cl_uint indent)
         */
         lastError = (dInfos[index].handler)(did, dInfos[index].param);
 
+        printf("\n");
+    }
+
+    return lastError;
+}
+
+
+template<typename T>
+static cl_int printCI_t(cl_context context, cl_context_info prop)
+{
+    cl_int err;
+    T value;
+    err = clGetContextInfo(context,
+                           prop,
+                           sizeof(T),
+                           &value,
+                           0
+                          );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Couldn't get generic platform property");
+        return err;
+    }
+
+    printT(value);
+    return CL_SUCCESS;
+}
+
+cl_int printContextInfo(cl_context context, cl_uint indent)
+{
+    typedef struct
+    {
+        cl_context_info param;
+        const char* name;
+        cl_int (*handler) (cl_context, cl_context_info);
+    } ContextInfo;
+
+    #define CONINFO(A,TYPE) { A, #A, & printCI_ ##TYPE }
+    ContextInfo cInfos[] =
+    {
+        CONINFO(CL_CONTEXT_REFERENCE_COUNT, t<cl_uint>),
+        CONINFO(CL_CONTEXT_NUM_DEVICES, t<cl_uint>)
+        /*
+         * FIXME: Support more platform properties. E.g. summary of devices
+         *        in the context.
+         */
+    };
+    #undef CONINFO
+
+    /* Iterate through properties */
+    cl_int lastError=CL_SUCCESS;
+    unsigned int index=0;
+    for (; index < sizeof(cInfos)/sizeof(ContextInfo); ++index)
+    {
+        for (cl_uint i=0; i < indent; ++i) printf(" "); // Do indentation
+
+        printf("%s :", cInfos[index].name);
+
+        // Call Handler to print information
+        lastError = (cInfos[index].handler)(context, cInfos[index].param );
         printf("\n");
     }
 
