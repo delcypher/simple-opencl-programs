@@ -227,6 +227,8 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    printProgramInfo(program, /*Indent*/ 0);
+
     cleanUp();
     return 0;
 }

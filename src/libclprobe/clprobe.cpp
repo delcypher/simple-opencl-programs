@@ -583,7 +583,7 @@ static cl_int printPBI_cstring(cl_program program,
     return CL_SUCCESS;
 }
 template<typename T>
-cl_int printPBI_flagt(cl_program program , cl_device_id device, cl_program_build_info buildInfo)
+static cl_int printPBI_flagt(cl_program program , cl_device_id device, cl_program_build_info buildInfo)
 {
    T value;
    cl_int err;
@@ -648,6 +648,7 @@ cl_int printProgramBuildInfo(cl_program program, cl_device_id device, cl_uint in
         PBINFO(CL_PROGRAM_BUILD_LOG, cstring)
 
     };
+    #undef PBINFO
 
     /* Iterate through properties */
     cl_uint index=0;
@@ -659,6 +660,103 @@ cl_int printProgramBuildInfo(cl_program program, cl_device_id device, cl_uint in
 
         // Call Handler
         lastError = (pbInfos[index].handler) (program, device, pbInfos[index].param);
+        printf("\n");
+    }
+
+    //FIXME: Not actually returning last error!
+    return lastError;
+}
+
+template<typename T, cl_program_info I, bool isArray>
+static cl_int printPI_t(cl_program program)
+{
+    cl_int err;
+    T* value;
+    size_t size=0;
+    //Get size
+    err = clGetProgramInfo( program,
+                            I,
+                            0,
+                            0,
+                            &size
+                          );
+   
+    if ( err != CL_SUCCESS )
+    {
+        printf("Couldn't get Program property size.");
+        return err;
+    }
+
+    value = (T*) malloc(size);
+    if ( value == 0 )
+    {
+        printf("Failed to malloc");
+        return CL_OUT_OF_HOST_MEMORY;
+    }
+
+    err = clGetProgramInfo( program,
+                            I,
+                            size,
+                            value,
+                            0
+                          );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Failed to get program info property.");
+        free(value);
+        return err;
+    }
+
+    // Use Overloaded printT
+    if (! isArray ) printT(*value);
+    else
+    {
+        for(unsigned int i=0; i < size/sizeof(T); ++i)
+        {
+            printT(value[i]);
+            printf(", ");
+        }
+    }
+    free(value);
+
+    return CL_SUCCESS;
+}
+
+cl_int printProgramInfo(cl_program program, cl_uint indent)
+{
+    typedef struct
+    {
+        cl_program_info param;
+        const char* name;
+        cl_int (*handler) (cl_program);
+    } ProgInfo;
+
+    #define PINFO(A,TYPE) { A, #A, printPI_t< TYPE ,A, false > }
+    #define PINFO_ARRAY(A,TYPE) { A, #A, printPI_t< TYPE, A, true > }
+    ProgInfo pInfos[] = 
+    {
+        PINFO(CL_PROGRAM_REFERENCE_COUNT, cl_uint),
+        #ifdef CL_VERSION_1_2
+        PINFO(CL_PROGRAM_NUM_KERNELS, size_t),
+        PINFO(CL_PROGRAM_KERNEL_NAMES, char*),
+        #endif
+        PINFO(CL_PROGRAM_NUM_DEVICES, cl_uint),
+        PINFO_ARRAY(CL_PROGRAM_BINARY_SIZES, size_t) /* In Bytes */
+    };
+    #undef PINFO
+    #undef PINFO_ARRAY
+
+    /* Iterate through properties */
+    cl_uint index=0;
+    cl_int lastError=CL_SUCCESS;
+    for(; index < sizeof(pInfos)/sizeof(ProgInfo) ; ++index)
+    {
+        for (cl_uint i=0; i < indent; ++i) printf(" "); // Do indentation
+        printf("%s: ", pInfos[index].name);
+
+        // Call Handler
+        lastError = (pInfos[index].handler) (program);
         printf("\n");
     }
 
