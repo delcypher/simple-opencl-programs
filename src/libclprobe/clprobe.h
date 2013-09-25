@@ -21,6 +21,8 @@ cl_int getDeviceIDs(cl_platform_id platform, cl_device_id** devices, cl_uint* nu
 cl_int printDeviceInfo(cl_device_id did, cl_uint indent);
 
 cl_int printContextInfo(cl_context context, cl_uint indent);
+
+cl_int printProgramBuildInfo(cl_program program, cl_device_id device, cl_uint indent);
 #ifdef __cplusplus
 }
 #endif

@@ -6,18 +6,18 @@
 #include <libclprobe/clprobe.h>
 #include <errno.h>
 
-void showError(const char* msg)
+void showError(const char* msg, bool quit=true)
 {
     printf("Error: %s\n", msg);
-    exit(1);
+    if (quit) exit(1);
 }
 
-void handleError(cl_int error, const char* msg)
+void handleError(cl_int error, const char* msg, bool quit=true)
 {
     if ( error != CL_SUCCESS)
     {
-        showError(msg);
-        assert(0 && "Unreachable");
+        showError(msg, quit);
+        if (quit) assert(0 && "Unreachable");
     }
 }
 
@@ -115,7 +115,7 @@ char* loadKernelFromFile(const char* path)
         return NULL;
     }
 
-    if ( fread(/*ptr*/ source, /* no of bytes */ 1 , fileSize , /*FILE*/ f) != fileSize)
+    if ( fread(/*ptr*/ source, /* no of bytes */ 1 , fileSize , /*FILE*/ f) != ( (size_t) fileSize) )
     {
         printf("Failed to read %s into memory.", path);
         fclose(f);
@@ -129,16 +129,23 @@ char* loadKernelFromFile(const char* path)
     return source;
 }
 
+
+void cleanUp();
+
+//Global for clean up convenience
+char* kernelSource=0;
+cl_program program=0;
+cl_context context=0;
+
 int main(int argc, char** argv)
 {
-
     if (argc != 2)
     {
         usage(argv[0]);
         assert(0 && "Unreachable");
     }
 
-    char* kernelSource = loadKernelFromFile( argv[1]);
+    kernelSource = loadKernelFromFile( argv[1]);
     if (kernelSource == NULL)
     {
         printf("Could not open OpenCL kernel: %s\n", argv[1]);
@@ -149,33 +156,35 @@ int main(int argc, char** argv)
         printf("%s loaded as string into memory.\n", argv[1]);
     }
 
+    cl_platform_id platform=0;
+    cl_device_id device=0;
+    cl_int err=CL_SUCCESS;
 
-
-    cl_platform_id platform = pickPlatform();
+    platform = pickPlatform();
     printf("Selected Platform:\n");
     printPlatformInfo(platform,0);
     printf("\n");
 
-    cl_device_id device = pickDevice(platform);
+    device = pickDevice(platform);
     printf("Selected Device:\n");
     printDeviceInfo(device, 0);
     printf("\n");
 
     /* Create Context */
-    cl_int err=CL_SUCCESS;
     cl_context_properties cProp[] = { CL_CONTEXT_PLATFORM, (cl_context_properties) platform, 0 };
-    cl_context context= clCreateContext( /*properties*/ cProp,
-                                         /*num_device*/ 1,
-                                         /*devices*/ &device,
-                                         /*CL_CALLBACK*/ contextCallBack,
-                                         /*user_data*/ NULL,
-                                         &err
-                                       );
+    context= clCreateContext( /*properties*/ cProp,
+                              /*num_device*/ 1,
+                              /*devices*/ &device,
+                              /*CL_CALLBACK*/ contextCallBack,
+                              /*user_data*/ NULL,
+                              &err
+                            );
 
     if ( err != CL_SUCCESS )
     {
         printf("Failed to create context: %d\n", err);
-        return 1;
+        cleanUp();
+        exit(1);
     }
     else
         printf("Created context.\n");
@@ -184,12 +193,58 @@ int main(int argc, char** argv)
     err = printContextInfo(context,0);
     printf("\n");
 
+    /* Create kernel */
+    program = clCreateProgramWithSource( context, 
+                                         /*number of strings*/ 1,
+                                         (const char**)  &kernelSource,
+                                         /* NULL terminated, don't need lengths*/ NULL,
+                                         &err
+                                       );
 
-    free(kernelSource);
-    err = clReleaseContext(context);
     if ( err != CL_SUCCESS )
     {
-        printf("Could not release context with error code:%d\n", err);
+        printf("Could not create program:%d\n", err);
+        cleanUp();
+        exit(1);
     }
+
+    /* Compile Kernel */
+    printf("Trying to compile & link kernel.\n");
+    err = clBuildProgram( program, 
+                          /* num_devices */ 1,
+                          /* devices*/ &device,
+                          /* Compiler options */ NULL,
+                          /* Callback */ NULL,
+                          /* User Data for call back */ NULL
+                        );
+
+    // Output build log
+    printProgramBuildInfo(program, device, /*Indent*/ 0);
+    if ( err != CL_SUCCESS )
+    {
+        printf("Build failed\n");
+        cleanUp();
+        exit(1);
+    }
+
+    cleanUp();
     return 0;
+}
+
+void cleanUp()
+{
+    cl_int err=0;
+    free(kernelSource);
+
+    if (program!= 0)
+    {
+        err = clReleaseProgram(program);
+        handleError(err, "Couldn't release program", true);
+    }
+
+    if (context!=0)
+    {
+        err = clReleaseContext(context);
+        handleError(err, "Couldn't release context", true);
+    }
 }

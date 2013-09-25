@@ -531,3 +531,137 @@ cl_int printContextInfo(cl_context context, cl_uint indent)
 
     return lastError;
 }
+
+
+static cl_int printPBI_cstring(cl_program program, 
+                               cl_device_id device, 
+                               cl_program_build_info buildInfo)
+{
+    cl_int err;
+
+    size_t stringSize=0;
+    char* string=0;
+    err = clGetProgramBuildInfo( program, 
+                                 device, 
+                                 buildInfo,
+                                 0,
+                                 NULL,
+                                 &stringSize
+                                );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Could not get string size.");
+        return err;
+    }
+
+    string = (char*) malloc( sizeof(char)*stringSize );
+
+    if (string == 0)
+    {
+        printf("Failed to malloc.");
+        return CL_OUT_OF_HOST_MEMORY;
+    }
+
+    err = clGetProgramBuildInfo( program, 
+                                 device, 
+                                 buildInfo,
+                                 stringSize,
+                                 string,
+                                 NULL
+                                );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Failed to retrieve string.");
+        free(string);
+        return err;
+    }
+
+    printf("%s", string);
+    free(string);
+    return CL_SUCCESS;
+}
+template<typename T>
+cl_int printPBI_flagt(cl_program program , cl_device_id device, cl_program_build_info buildInfo)
+{
+   T value;
+   cl_int err;
+
+   err = clGetProgramBuildInfo( program,
+                                device,
+                                buildInfo,
+                                sizeof(T),
+                                &value,
+                                NULL
+                              );
+   if ( err != CL_SUCCESS )
+   {
+        printf("Failed to get build info.");
+        return err;
+   }
+
+   #define BFLAG(F) if ( value ==  F ) printf(#F)
+   if (buildInfo == CL_PROGRAM_BUILD_STATUS )
+   {
+        BFLAG(CL_BUILD_NONE);
+        BFLAG(CL_BUILD_ERROR);
+        BFLAG(CL_BUILD_SUCCESS);
+        BFLAG(CL_BUILD_IN_PROGRESS);
+   }
+   #ifdef CL_VERSION_1_2
+   else if (buildInfo == CL_PROGRAM_BINARY_TYPE )
+   {
+        BFLAG(CL_PROGRAM_BINARY_TYPE_NONE);
+        BFLAG(CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT);
+        BFLAG(CL_PROGRAM_BINARY_TYPE_LIBRARY);
+        BFLAG(CL_PROGRAM_BINARY_TYPE_EXECUTABLE);
+   }
+   #endif
+   else
+   {
+        printf("Wrong handler.");
+        return CL_INVALID_VALUE;
+   }
+   #undef BFLAG
+
+   return CL_SUCCESS;
+}
+
+cl_int printProgramBuildInfo(cl_program program, cl_device_id device, cl_uint indent)
+{
+    typedef struct
+    {
+        cl_program_build_info param;
+        const char* name;
+        cl_int (*handler) (cl_program, cl_device_id, cl_program_build_info);
+    } ProgBuildInfo;
+
+    #define PBINFO(A,H) { A, #A, printPBI_ ##H }
+    ProgBuildInfo pbInfos [] = 
+    {
+        PBINFO(CL_PROGRAM_BUILD_STATUS, flagt<cl_build_status>),
+        PBINFO(CL_PROGRAM_BUILD_OPTIONS, cstring),
+        #ifdef CL_VERSION_1_2
+        PBINFO(CL_PROGRAM_BINARY_TYPE, flagt<cl_program_binary_type>),
+        #endif
+        PBINFO(CL_PROGRAM_BUILD_LOG, cstring)
+
+    };
+
+    /* Iterate through properties */
+    cl_uint index=0;
+    cl_int lastError=CL_SUCCESS;
+    for(; index < sizeof(pbInfos)/sizeof(ProgBuildInfo) ; ++index)
+    {
+        for (cl_uint i=0; i < indent; ++i) printf(" "); // Do indentation
+        printf("%s: ", pbInfos[index].name);
+
+        // Call Handler
+        lastError = (pbInfos[index].handler) (program, device, pbInfos[index].param);
+        printf("\n");
+    }
+
+    //FIXME: Not actually returning last error!
+    return lastError;
+}
