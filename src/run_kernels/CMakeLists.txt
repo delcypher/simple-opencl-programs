@@ -3,8 +3,15 @@ target_link_libraries( run_kernel clprobe ${OPENCL_LIBRARIES} )
 
 set(kernels add.cl)
 
+add_custom_target(copyKernels)
+
 foreach(kernel ${kernels})
-    # Use configure_file so that if kernel changes file will be copied over
-    message(STATUS "Copying kernel ${kernel}")
-    configure_file(${kernel} ${CMAKE_CURRENT_BINARY_DIR}/${kernel} COPYONLY)
+    message(STATUS "Found kernel ${kernel}")
+    add_custom_command(TARGET copyKernels POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E echo Copying kernel ${kernel}
+                       COMMAND ${CMAKE_COMMAND} -E
+                       copy ${CMAKE_CURRENT_SOURCE_DIR}/${kernel} ${CMAKE_CURRENT_BINARY_DIR}/${kernel})
 endforeach()
+
+#Trigger copying of kernel when we build run_kernel
+add_dependencies(run_kernel copyKernels)
