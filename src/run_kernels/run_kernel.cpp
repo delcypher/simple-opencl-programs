@@ -68,7 +68,7 @@ void contextCallBack(const char* errInfo,
 
 void usage(const char* progName)
 {
-    printf("Usage: %s <kernel file>\n", progName);
+    printf("Usage: %s <kernel file> <array_size>\n", progName);
     exit(1);
 }
 
@@ -132,20 +132,37 @@ char* loadKernelFromFile(const char* path)
 
 void cleanUp();
 
+void printArray(cl_int* array, cl_uint nElements)
+{
+    for (cl_uint index=0; index < nElements; ++index)
+    {
+        printf("Array[%u] = %d\n", index, array[index]);
+    }
+}
+
 //Global for clean up convenience
 char* kernelSource=0;
 cl_program program=0;
 cl_context context=0;
+cl_command_queue cmdQueue=0;
+cl_kernel kernel=0;
+cl_int* hostArray=0;
+cl_int* copiedBackArray=0;
+cl_mem arrayBuffer=0;
 
 int main(int argc, char** argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
         usage(argv[0]);
         assert(0 && "Unreachable");
     }
 
     kernelSource = loadKernelFromFile( argv[1]);
+    unsigned int arraySize = atoi( argv[2] );
+    printf("Using array size of %u", arraySize);
+    assert( arraySize > 0 && arraySize < 512 && "Array size too big");
+
     if (kernelSource == NULL)
     {
         printf("Could not open OpenCL kernel: %s\n", argv[1]);
@@ -193,6 +210,20 @@ int main(int argc, char** argv)
     err = printContextInfo(context,0);
     printf("\n");
 
+    /* Create command queue */
+    cmdQueue = clCreateCommandQueue( context,
+                                     device,
+                                     /*properties */ 0,
+                                     &err
+                                   );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Couldn't create command queue.\n");
+        cleanUp();
+        exit(1);
+    }
+
     /* Create kernel */
     program = clCreateProgramWithSource( context, 
                                          /*number of strings*/ 1,
@@ -229,6 +260,102 @@ int main(int argc, char** argv)
 
     printProgramInfo(program, /*Indent*/ 0);
 
+    /* Create kernel object */
+    kernel = clCreateKernel( program, "simple_kernel", &err);
+    if (err != CL_SUCCESS )
+    {
+        printf("Failed to create kernel object.\n");
+        cleanUp();
+        exit(1);
+    }
+
+    /* Create array to copied to host */
+    cl_int* hostArray = (cl_int*) malloc( sizeof(cl_int) * arraySize );
+    cl_int* copiedBackArray = (cl_int*) malloc( sizeof(cl_int) * arraySize );
+    if ( hostArray == 0 || copiedBackArray == 0 )
+    {
+        printf("Failed to malloc memory for host array\n");
+        cleanUp();
+        exit(1);
+    }
+
+    // fill with sequential values
+    for(cl_uint index=0; index < arraySize; ++index)
+    {
+        hostArray[index] = index;
+    }
+    printf("Created Array:\n");
+    printArray( hostArray, arraySize);
+    printf("\n");
+
+    // Create Buffer
+    arrayBuffer = clCreateBuffer(context, 
+                                 CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                 sizeof(cl_int) * arraySize,
+                                 hostArray,
+                                 &err
+                                );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Failed to create buffer. Error:%d\n", err);
+        cleanUp();
+        exit(1);
+    }
+
+    /* Setup kernel arguments */
+    err = clSetKernelArg( kernel,
+                          /* argument index*/ 0,
+                          sizeof(cl_mem),
+                          &arrayBuffer
+                        );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Couldn't set kernel argument.\n");
+        cleanUp();
+        exit(1);
+    }
+
+    size_t globalWorkSize[] = { arraySize };
+    size_t localWorkSize[] = { 1 };
+
+    printf("Enquing kernel.\n");
+    /* Enqueue kernel */
+    err = clEnqueueNDRangeKernel( cmdQueue,
+                                  kernel,
+                                  /* Work dim */ 1,
+                                  /* global_work_offset */ NULL,
+                                  /* global_work_size */ globalWorkSize,
+                                  /* local_work_size */ localWorkSize,
+                                  /* num_events_in_wait_list */ 0,
+                                  /* event_wait_list */ NULL,
+                                  /* event */ NULL
+                                 );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Failed to enqueue kernel.\n");
+        cleanUp();
+        exit(1);
+    }
+
+    /* Read back array */
+    err = clEnqueueReadBuffer( cmdQueue,
+                               arrayBuffer,
+                               /* blocking_read */ CL_TRUE,
+                               /* offset */ 0,
+                               /* size */ sizeof(cl_int)*arraySize,
+                               copiedBackArray,
+                               /* num_events_in_wait_list */ 0,
+                               /* event_wait_list */ NULL,
+                               /* event */ NULL
+                             );
+
+
+
+    printf("\nReading back array:\n");
+    printArray( copiedBackArray, arraySize);
     cleanUp();
     return 0;
 }
@@ -238,15 +365,33 @@ void cleanUp()
     cl_int err=0;
     free(kernelSource);
 
+    if (kernel!=0)
+    {
+        err = clReleaseKernel(kernel);
+        handleError(err, "Couldn't release kernel", false);
+    }
+
     if (program!= 0)
     {
         err = clReleaseProgram(program);
-        handleError(err, "Couldn't release program", true);
+        handleError(err, "Couldn't release program", false);
+    }
+
+    if (cmdQueue != 0 )
+    {
+        err = clReleaseCommandQueue(cmdQueue);
+        handleError(err, "Couldn't release command queue", false);
     }
 
     if (context!=0)
     {
         err = clReleaseContext(context);
-        handleError(err, "Couldn't release context", true);
+        handleError(err, "Couldn't release context", false);
     }
+
+    if (hostArray!=0)
+        free(hostArray);
+
+    if (copiedBackArray!=0)
+        free(copiedBackArray);
 }
