@@ -249,8 +249,10 @@ int main(int argc, char** argv)
                           /* User Data for call back */ NULL
                         );
 
+    #ifndef KLEE_CL
     // Output build log
     printProgramBuildInfo(program, device, /*Indent*/ 0);
+    #endif
     if ( err != CL_SUCCESS )
     {
         printf("Build failed\n");
@@ -258,7 +260,9 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    #ifndef KLEE_CL
     printProgramInfo(program, /*Indent*/ 0);
+    #endif
 
     /* Create kernel object */
     kernel = clCreateKernel( program, "simple_kernel", &err);

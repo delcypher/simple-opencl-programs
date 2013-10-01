@@ -27,5 +27,12 @@ else()
     message(WARNING "FIXME:Could not enable compiler warnings.")
 endif()
 
+# Selectively disable bits of code for KLEE-CL
+option(KLEE_CL_BUILD OFF)
+if(KLEE_CL_BUILD)
+    message(WARNING "Disabling code not supported by klee-cl")
+    add_definitions(-DKLEE_CL)
+endif()
+
 # Build examples
 subdirs( src )
