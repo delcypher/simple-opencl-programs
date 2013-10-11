@@ -4,6 +4,10 @@
 #include <cstdlib>
 #include <cassert>
 
+// Explicitly request format macros
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 cl_int getPlatformIDs(cl_platform_id** platforms, cl_uint* numberOfPlatforms)
 {
     cl_int err = clGetPlatformIDs(0, NULL, numberOfPlatforms);
@@ -290,10 +294,13 @@ static cl_int printDI_FPflag(cl_device_id did, cl_device_info info)
     return CL_SUCCESS;
 }
 
-static void printT(cl_uint t) { printf("%u",t);}
-static void printT(cl_int t) { printf("%d",t); }
-static void printT(size_t t) { printf("%lu", (unsigned long) t); }
-
+static void printT(cl_uint t) { printf( "%" PRIu32 ,t); assert(sizeof(cl_uint) == 32/8 && "Size mistmatch");}
+static void printT(cl_int t) { printf( "%" PRIi32 ,t); assert(sizeof(cl_int) == 32/8 && "Size mistmatch");}
+static void printT(cl_ulong t) { printf( "%" PRIu64 ,t); assert(sizeof(cl_ulong) == 64/8 && "Size mistmatch");}
+/*
+  // One of the cl_* types has same effective type as size_t, so we don't need it
+  static void printT(size_t t) { printf("%lu", (unsigned long) t); }
+*/
 template <typename T>
 static cl_int printDI_t(cl_device_id did, cl_device_info info)
 {
