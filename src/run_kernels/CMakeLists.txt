@@ -1,7 +1,7 @@
 add_executable( run_kernel run_kernel.cpp)
 target_link_libraries( run_kernel clprobe ${OPENCL_LIBRARIES} )
 
-set(kernels add.cl)
+set(kernels add.cl dot_product.cl)
 
 add_custom_target(copyKernels)
 
