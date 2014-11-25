@@ -9,10 +9,11 @@ __kernel void simple_kernel( __global int* A)
     
     for (int d=n/2; n > 0 ; n /= 2)
     {
+        barrier(CLK_GLOBAL_MEM_FENCE);
+
         if ( tid < d)
             A[tid] += A[tid + d];
 
-        barrier(CLK_GLOBAL_MEM_FENCE);
     }
 
     // A[0] contains result
