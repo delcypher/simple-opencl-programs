@@ -7,7 +7,7 @@ __kernel void simple_kernel( __global int* A)
     A[tid] = A[tid]*A[tid];
     
     
-    for (int d=n/2; n > 0 ; n /= 2)
+    for (int d=n/2; d > 0 ; d /= 2)
     {
         barrier(CLK_GLOBAL_MEM_FENCE);
 
