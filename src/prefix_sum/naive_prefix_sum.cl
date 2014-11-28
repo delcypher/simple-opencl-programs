@@ -26,6 +26,6 @@ __kernel void prefix_sum(__global int* restrict A, __global int* restrict B, __p
         B = temp;
     }
 
-    // The final result is in B if # of loop iterations is even.
-    // The final result is in A if # of loop iterations is odd.
+    // The final result is in B if # of loop iterations is odd.
+    // The final result is in A if # of loop iterations is even.
 }

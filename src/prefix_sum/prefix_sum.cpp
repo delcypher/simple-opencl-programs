@@ -397,8 +397,7 @@ int main(int argc, char** argv)
     }
 
     /* Read back array */
-    // FIXME: pick correct buffer.
-    cl_mem resultBuffer = (numOfIterations % 2 == 0)? arrayBBuffer: arrayABuffer;
+    cl_mem resultBuffer = (numOfIterations % 2 != 0)? arrayBBuffer: arrayABuffer;
     err = clEnqueueReadBuffer( cmdQueue,
                                resultBuffer,
                                /* blocking_read */ CL_TRUE,
