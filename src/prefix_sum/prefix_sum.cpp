@@ -374,7 +374,7 @@ int main(int argc, char** argv)
     }
 
     size_t globalWorkSize[] = { arraySize };
-    size_t localWorkSize[] = { 1 };
+    size_t localWorkSize[] = { arraySize };
 
     printf("Enquing kernel.\n");
     /* Enqueue kernel */
