@@ -297,6 +297,7 @@ static cl_int printDI_FPflag(cl_device_id did, cl_device_info info)
 static void printT(cl_uint t) { printf( "%" PRIu32 ,t); assert(sizeof(cl_uint) == 32/8 && "Size mistmatch");}
 static void printT(cl_int t) { printf( "%" PRIi32 ,t); assert(sizeof(cl_int) == 32/8 && "Size mistmatch");}
 static void printT(cl_ulong t) { printf( "%" PRIu64 ,t); assert(sizeof(cl_ulong) == 64/8 && "Size mistmatch");}
+static void printT(char* t) { printf( "%s" ,t);}
 /*
   // One of the cl_* types has same effective type as size_t, so we don't need it
   static void printT(size_t t) { printf("%lu", (unsigned long) t); }
@@ -446,7 +447,7 @@ cl_int printDeviceInfo(cl_device_id did, cl_uint indent)
         DEVINFO(CL_DEVICE_ENDIAN_LITTLE, cl_bool),
         #ifdef CL_VERSION_1_2
         DEVINFO(CL_DEVICE_LINKER_AVAILABLE, cl_bool),
-        DEVINFO(CL_DEVICE_BUILT_IN_KERNELS),
+        DEVINFO(CL_DEVICE_BUILT_IN_KERNELS, cstring),
         #endif
         DEVINFO(CL_DEVICE_HOST_UNIFIED_MEMORY, cl_bool),
         DEVINFO(CL_DEVICE_ERROR_CORRECTION_SUPPORT, cl_bool),
@@ -730,6 +731,60 @@ static cl_int printPI_t(cl_program program)
     return CL_SUCCESS;
 }
 
+#ifdef CL_VERSION_1_2
+// Specialised template for CL_PROGRAM_KERNEL_NAMES
+// THIS IS A HACK!
+template<>
+cl_int printPI_t<char*, CL_PROGRAM_KERNEL_NAMES, false>(cl_program program)
+{
+
+    cl_int err;
+    char* value;
+    size_t size=0;
+    //Get size
+    err = clGetProgramInfo( program,
+                            CL_PROGRAM_KERNEL_NAMES,
+                            0,
+                            0,
+                            &size
+                          );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Couldn't get Program property size.");
+        return err;
+    }
+
+    value = (char*) malloc(size);
+    if ( value == 0 )
+    {
+        printf("Failed to malloc");
+        return CL_OUT_OF_HOST_MEMORY;
+    }
+
+    err = clGetProgramInfo( program,
+                            CL_PROGRAM_KERNEL_NAMES,
+                            size,
+                            value,
+                            0
+                          );
+
+    if ( err != CL_SUCCESS )
+    {
+        printf("Failed to get program info property.");
+        free(value);
+        return err;
+    }
+
+    // Use Overloaded printT
+    printT(value);
+    free(value);
+
+    return CL_SUCCESS;
+}
+#endif
+
+
 cl_int printProgramInfo(cl_program program, cl_uint indent)
 {
     typedef struct
@@ -746,7 +801,7 @@ cl_int printProgramInfo(cl_program program, cl_uint indent)
         PINFO(CL_PROGRAM_REFERENCE_COUNT, cl_uint),
         #ifdef CL_VERSION_1_2
         PINFO(CL_PROGRAM_NUM_KERNELS, size_t),
-        PINFO(CL_PROGRAM_KERNEL_NAMES, char*),
+        PINFO(CL_PROGRAM_KERNEL_NAMES, char*), // FIXME: This is handled using a hack. Fix it properly!
         #endif
         PINFO(CL_PROGRAM_NUM_DEVICES, cl_uint),
         PINFO_ARRAY(CL_PROGRAM_BINARY_SIZES, size_t) /* In Bytes */
